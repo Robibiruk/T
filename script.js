@@ -20,6 +20,44 @@ document.querySelectorAll('.contact-links a').forEach((link, index) => {
   link.setAttribute('aria-label', contactLabels[index]);
 });
 
+let activeVimeoPlayer = null;
+let activePlayButton = null;
+
+document.querySelectorAll('.play-toggle').forEach((button) => {
+  const frame = button.closest('.video-slot').querySelector('.vimeo-frame');
+  const player = window.Vimeo ? new Vimeo.Player(frame) : null;
+
+  button.addEventListener('click', async () => {
+    if (!player) return;
+    try {
+      if (activeVimeoPlayer && activeVimeoPlayer !== player) {
+        await activeVimeoPlayer.setMuted(true);
+        activePlayButton?.classList.remove('is-playing');
+        activePlayButton?.setAttribute('aria-label', 'Play video with sound');
+      }
+
+      if (activeVimeoPlayer === player) {
+        await player.setMuted(true);
+        button.classList.remove('is-playing');
+        button.setAttribute('aria-label', 'Play video with sound');
+        activeVimeoPlayer = null;
+        activePlayButton = null;
+        return;
+      }
+
+      await player.setMuted(false);
+      await player.setVolume(1);
+      await player.play();
+      button.classList.add('is-playing');
+      button.setAttribute('aria-label', 'Mute video');
+      activeVimeoPlayer = player;
+      activePlayButton = button;
+    } catch (error) {
+      button.setAttribute('aria-label', 'Play video with sound');
+    }
+  });
+});
+
 function updateScrollState() {
   const isScrolled = window.scrollY > 24;
   header.classList.toggle('scrolled', isScrolled);
