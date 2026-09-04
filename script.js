@@ -28,38 +28,53 @@ document.querySelectorAll('.play-toggle').forEach((button) => {
   const player = window.Vimeo ? new Vimeo.Player(frame) : null;
   if (!player) return;
 
-  const controller = { player, button, soundEnabled: false };
+  const icon = button.querySelector('.slot-icon');
+  const controller = { player, button, icon, ready: player.ready(), unmuted: false };
   vimeoControllers.push(controller);
 
   button.addEventListener('click', () => {
     audioOperation = audioOperation.then(async () => {
       try {
-        if (controller.soundEnabled) {
+        await controller.ready;
+
+        // Currently unmuted → mute it
+        if (controller.unmuted) {
           await player.setMuted(true);
-          controller.soundEnabled = false;
+          controller.unmuted = false;
           button.classList.remove('is-playing');
-          button.setAttribute('aria-label', 'Play video with sound');
+          icon.textContent = '🔇';
+          button.setAttribute('aria-label', 'Unmute video');
           return;
         }
 
-        await Promise.all(vimeoControllers
+        // Currently muted → unmute this one, mute all others
+        // (only one video can have sound at a time)
+        await Promise.allSettled(vimeoControllers
           .filter((item) => item !== controller)
           .map(async (item) => {
-            await item.player.setMuted(true);
-            item.soundEnabled = false;
-            item.button.classList.remove('is-playing');
-            item.button.setAttribute('aria-label', 'Play video with sound');
+            try {
+              await item.ready;
+              await item.player.setMuted(true);
+              item.unmuted = false;
+              item.button.classList.remove('is-playing');
+              item.icon.textContent = '🔇';
+              item.button.setAttribute('aria-label', 'Unmute video');
+            } catch (e) {
+              // ignore — other controller may not be ready
+            }
           }));
 
         await player.setMuted(false);
         await player.setVolume(1);
-        await player.play();
-        controller.soundEnabled = true;
+        controller.unmuted = true;
         button.classList.add('is-playing');
+        icon.textContent = '🔊';
         button.setAttribute('aria-label', 'Mute video');
       } catch (error) {
-        controller.soundEnabled = false;
-        button.setAttribute('aria-label', 'Play video with sound');
+        controller.unmuted = false;
+        button.classList.remove('is-playing');
+        icon.textContent = '🔇';
+        button.setAttribute('aria-label', 'Unmute video');
       }
     });
   });
