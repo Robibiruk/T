@@ -3,7 +3,12 @@ const menuToggle = document.querySelector('.menu-toggle');
 const siteNav = document.querySelector('.site-nav');
 const topButton = document.querySelector('.top-button');
 const contactLabels = ['Email', 'TikTok', 'Telegram'];
+const contactForm = document.querySelector('form[name="contact"]');
 const telegramLink = document.querySelector('.contact-links a[href="https://t.me/tesfu458"]');
+
+if (contactForm) {
+  contactForm.setAttribute('action', '/success.html');
+}
 
 if (telegramLink) {
   telegramLink.dataset.social = 'telegram';
