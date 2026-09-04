@@ -20,41 +20,48 @@ document.querySelectorAll('.contact-links a').forEach((link, index) => {
   link.setAttribute('aria-label', contactLabels[index]);
 });
 
-let activeVimeoPlayer = null;
-let activePlayButton = null;
+const vimeoControllers = [];
+let audioOperation = Promise.resolve();
 
 document.querySelectorAll('.play-toggle').forEach((button) => {
   const frame = button.closest('.video-slot').querySelector('.vimeo-frame');
   const player = window.Vimeo ? new Vimeo.Player(frame) : null;
+  if (!player) return;
 
-  button.addEventListener('click', async () => {
-    if (!player) return;
-    try {
-      if (activeVimeoPlayer && activeVimeoPlayer !== player) {
-        await activeVimeoPlayer.setMuted(true);
-        activePlayButton?.classList.remove('is-playing');
-        activePlayButton?.setAttribute('aria-label', 'Play video with sound');
-      }
+  const controller = { player, button, soundEnabled: false };
+  vimeoControllers.push(controller);
 
-      if (activeVimeoPlayer === player) {
-        await player.setMuted(true);
-        button.classList.remove('is-playing');
+  button.addEventListener('click', () => {
+    audioOperation = audioOperation.then(async () => {
+      try {
+        if (controller.soundEnabled) {
+          await player.setMuted(true);
+          controller.soundEnabled = false;
+          button.classList.remove('is-playing');
+          button.setAttribute('aria-label', 'Play video with sound');
+          return;
+        }
+
+        await Promise.all(vimeoControllers
+          .filter((item) => item !== controller)
+          .map(async (item) => {
+            await item.player.setMuted(true);
+            item.soundEnabled = false;
+            item.button.classList.remove('is-playing');
+            item.button.setAttribute('aria-label', 'Play video with sound');
+          }));
+
+        await player.setMuted(false);
+        await player.setVolume(1);
+        await player.play();
+        controller.soundEnabled = true;
+        button.classList.add('is-playing');
+        button.setAttribute('aria-label', 'Mute video');
+      } catch (error) {
+        controller.soundEnabled = false;
         button.setAttribute('aria-label', 'Play video with sound');
-        activeVimeoPlayer = null;
-        activePlayButton = null;
-        return;
       }
-
-      await player.setMuted(false);
-      await player.setVolume(1);
-      await player.play();
-      button.classList.add('is-playing');
-      button.setAttribute('aria-label', 'Mute video');
-      activeVimeoPlayer = player;
-      activePlayButton = button;
-    } catch (error) {
-      button.setAttribute('aria-label', 'Play video with sound');
-    }
+    });
   });
 });
 
